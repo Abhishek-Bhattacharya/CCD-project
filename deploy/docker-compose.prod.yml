@@ -1,8 +1,8 @@
 services:
   phoenixci-service:
     build:
-      context: ../app
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: app/Dockerfile
     image: phoenixci-service:${RELEASE_COMMIT:-latest}
     container_name: phoenixci-prod
     restart: always
@@ -12,6 +12,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - RELEASE_COMMIT=${RELEASE_COMMIT}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
     logging:
       driver: "json-file"
       options:

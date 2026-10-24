@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: "24"
           cache: "npm"
-          cache-dependency-path: "app/package-lock.json"
+          cache-dependency-path: |
+            app/package-lock.json
+            frontend/package-lock.json
 
       - name: "Install dependencies reproducibly"
         id: npm-install
@@ -36,10 +38,28 @@ jobs:
           cd app
           npm test
 
+      - name: "Install frontend dependencies"
+        id: frontend-install
+        run: |
+          cd frontend
+          npm ci
+
+      - name: "Run frontend tests"
+        id: frontend-test
+        run: |
+          cd frontend
+          npm test
+
+      - name: "Build integrated frontend"
+        id: frontend-build
+        run: |
+          cd app
+          npm run build
+
       - name: "Build Docker container image"
         id: docker-build
         run: |
-          docker build -t phoenixci-service:${{ github.sha }} app/
+          docker build -t phoenixci-service:${{ github.sha }} -f app/Dockerfile .
 
       - name: "Collect failure logs on error"
         if: failure()
@@ -54,6 +74,12 @@ jobs:
             echo "Failed Step: npm-install" >> .phoenix/logs/failure.log
           elif [ "${{ steps.npm-test.outcome }}" == "failure" ]; then
             echo "Failed Step: npm-test" >> .phoenix/logs/failure.log
+          elif [ "${{ steps.frontend-install.outcome }}" == "failure" ]; then
+            echo "Failed Step: frontend-install" >> .phoenix/logs/failure.log
+          elif [ "${{ steps.frontend-test.outcome }}" == "failure" ]; then
+            echo "Failed Step: frontend-test" >> .phoenix/logs/failure.log
+          elif [ "${{ steps.frontend-build.outcome }}" == "failure" ]; then
+            echo "Failed Step: frontend-build" >> .phoenix/logs/failure.log
           elif [ "${{ steps.docker-build.outcome }}" == "failure" ]; then
             echo "Failed Step: docker-build" >> .phoenix/logs/failure.log
           fi

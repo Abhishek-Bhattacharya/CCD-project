@@ -1,25 +1,26 @@
-# Production Dockerfile for PhoenixCI Service
-FROM node:24-alpine AS base
+# Build the supplied Foundly frontend.
+FROM node:24-alpine AS frontend-build
 
-# Install curl/wget for healthcheck
+WORKDIR /workspace
+COPY frontend/package*.json ./frontend/
+RUN npm ci --prefix frontend
+COPY frontend/ ./frontend/
+RUN npm run build --prefix frontend
+
+FROM node:24-alpine AS production
+
 WORKDIR /app
-
-# Install production dependencies
 COPY package*.json ./
 RUN npm ci --omit=dev
-
-# Copy application source code
 COPY src/ ./src/
+COPY --from=frontend-build /workspace/app/dist ./dist
 
-# Run with unprivileged user
+ENV NODE_ENV=production
 USER node
 
-# Expose HTTP port
 EXPOSE 3000
 
-# Container healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start server
 CMD ["node", "src/server.js"]

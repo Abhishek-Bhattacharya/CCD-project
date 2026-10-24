@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --campus-ivory: 246 247 243;
+    --campus-espresso: 39 48 44;
+    --campus-espresso-muted: 89 101 94;
+    --campus-espresso-subtle: 131 145 136;
+    --campus-terracotta: 188 83 59;
+    --campus-terracotta-hover: 161 65 46;
+    --campus-terracotta-light: 250 235 229;
+    --campus-terracotta-border: 233 192 179;
+    --campus-terracotta-text: 130 50 32;
+    --campus-turmeric: 204 213 178;
+    --campus-turmeric-hover: 184 198 150;
+    --campus-turmeric-light: 239 243 227;
+    --campus-turmeric-border: 211 221 187;
+    --campus-turmeric-text: 70 86 52;
+    --campus-sandstone: 228 233 226;
+    --campus-sandstone-surface: 238 241 235;
+    --campus-sandstone-border: 212 219 211;
+    --campus-surface: 255 255 255;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+    --campus-ivory: 27 31 29;
+    --campus-espresso: 237 239 232;
+    --campus-espresso-muted: 183 190 179;
+    --campus-espresso-subtle: 143 153 141;
+    --campus-terracotta: 224 132 107;
+    --campus-terracotta-hover: 238 151 127;
+    --campus-terracotta-light: 66 43 36;
+    --campus-terracotta-border: 123 72 55;
+    --campus-terracotta-text: 255 196 173;
+    --campus-turmeric: 171 190 135;
+    --campus-turmeric-hover: 190 208 154;
+    --campus-turmeric-light: 49 60 45;
+    --campus-turmeric-border: 84 102 67;
+    --campus-turmeric-text: 219 233 193;
+    --campus-sandstone: 51 58 53;
+    --campus-sandstone-surface: 39 46 42;
+    --campus-sandstone-border: 67 76 69;
+    --campus-surface: 33 39 36;
+  }
+}
+
+@layer base {
+  body {
+    background-color: rgb(var(--campus-ivory));
+    color: rgb(var(--campus-espresso));
+    font-family: Manrope, Inter, system-ui, sans-serif;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--campus-terracotta));
+    outline-offset: 2px;
+  }
+}
+
+.dark .bg-white,
+.dark [class~="bg-white/95"] {
+  background-color: rgb(var(--campus-surface));
+}
+
+.dark .bg-stone-50,
+.dark .bg-stone-100 {
+  background-color: rgb(var(--campus-sandstone-surface));
+}
+
+.dark .bg-stone-200,
+.dark .bg-stone-200\/50 {
+  background-color: rgb(var(--campus-sandstone));
+}
+
+.dark .text-stone-400,
+.dark .text-stone-500 {
+  color: rgb(var(--campus-espresso-subtle));
+}
+
+.dark .border-stone-100 {
+  border-color: rgb(var(--campus-sandstone-border));
+}
+
+.dark .bg-emerald-50 {
+  background-color: rgb(31 72 55);
+}
+
+.dark .text-emerald-800 {
+  color: rgb(173 224 191);
+}
+
+.dark .border-emerald-200 {
+  border-color: rgb(63 110 81);
+}

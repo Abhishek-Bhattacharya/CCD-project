@@ -34,7 +34,7 @@ jobs:
 
       - name: "Execute Remote Deployment on EC2"
         run: |
-          scp -r deploy/ app/ docker-compose.yml ubuntu@${{ secrets.EC2_HOST }}:~/phoenixci/
+          scp -r .dockerignore deploy/ app/ frontend/ docker-compose.yml ubuntu@${{ secrets.EC2_HOST }}:~/phoenixci/
           ssh ubuntu@${{ secrets.EC2_HOST }} "bash ~/phoenixci/deploy/deploy.sh ${{ github.sha }}"
 
       - name: "Run Remote Healthcheck"

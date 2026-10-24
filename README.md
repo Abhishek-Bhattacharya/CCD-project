@@ -81,7 +81,7 @@ phoenixci/
 ├── app/                           # Node.js microservice
 │   ├── package.json               # Manifest (Express, Jest, Supertest)
 │   ├── package-lock.json          # Committed dependency lockfile
-│   ├── Dockerfile                 # Multi-stage container definition
+│   ├── Dockerfile                 # Multi-stage frontend/service container build
 │   ├── .dockerignore              # Container build exclusions
 │   ├── src/
 │   │   ├── app.js                 # Express routes (/, /health, /api/status, /api/priority)
@@ -90,6 +90,9 @@ phoenixci/
 │   └── tests/
 │       ├── app.test.js            # API endpoint integration tests
 │       └── priority.test.js       # Business logic unit tests
+├── frontend/                      # Foundly React/Vite app served by Express
+│   ├── src/                       # Pages, components, Supabase client
+│   └── supabase/migrations/       # `items` schema and access policies
 ├── agent/                         # Autonomous Repair Agent
 │   ├── cli.py                     # Agent CLI entrypoint
 │   └── phoenix_agent/
@@ -149,6 +152,14 @@ cp .env.example .env
 | `REQUIRE_HUMAN_APPROVAL` | Enforce human review before merge | `true` |
 | `AUTO_MERGE_ENABLED` | Allow auto-merge if checks pass and approval disabled | `false` |
 | `MAX_REPAIR_ATTEMPTS` | Maximum repair attempts per failed commit | `2` |
+| `VITE_SUPABASE_URL` | Supabase project URL used by the Foundly frontend | *Required for listings* |
+| `VITE_SUPABASE_ANON_KEY` | Supabase publishable/anon key used by the Foundly frontend | *Required for listings* |
+
+The Foundly browser app is served by the Express service. These two Supabase
+values are read at runtime and exposed only to the browser as public client
+configuration; never use a Supabase service-role key here. Apply
+`frontend/supabase/migrations/20250101000000_init_campusfind.sql` to the
+Supabase project to create the `items` table and its access policies.
 
 ---
 
@@ -172,12 +183,37 @@ Defined in [`config/repair-policy.yaml`](file:///C:/Users/abhis/Music/Assignment
 
 ### 1. Install Dependencies
 ```bash
-# Node.js app dependencies
-cd app && npm install && cd ..
+# Install both app dependency sets
+cd app && npm ci && cd ..
+cd frontend && npm ci && cd ..
 
 # Python agent dependencies
 pip install -r requirements.txt
 ```
+
+### Run the Foundly app locally
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the root `.env` (or
+`frontend/.env` for Vite-only local development), then start the API and UI in
+separate terminals:
+
+```bash
+# Terminal 1: Express API
+cd app && npm start
+
+# Terminal 2: supplied frontend, with API/config requests proxied to Express
+cd frontend && npm run dev
+```
+
+For a production-style local run, build from the app package and start Express;
+the server serves the generated UI from `app/dist`:
+
+```bash
+cd app && npm run build && npm start
+```
+
+`docker compose up --build` builds and serves both the backend and frontend on
+port 3000. The deployment host must provide the two Supabase variables in its
+root `.env` file.
 
 ### 2. Run the Test Suites
 ```bash
