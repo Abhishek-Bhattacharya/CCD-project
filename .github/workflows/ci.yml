@@ -1,0 +1,68 @@
+name: "Continuous Integration"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    name: "Build, Test & Containerize"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout source code"
+        uses: actions/checkout@v4
+
+      - name: "Set up Node.js 24"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: "app/package-lock.json"
+
+      - name: "Install dependencies reproducibly"
+        id: npm-install
+        run: |
+          cd app
+          npm ci
+
+      - name: "Run Jest unit tests"
+        id: npm-test
+        run: |
+          cd app
+          npm test
+
+      - name: "Build Docker container image"
+        id: docker-build
+        run: |
+          docker build -t phoenixci-service:${{ github.sha }} app/
+
+      - name: "Collect failure logs on error"
+        if: failure()
+        run: |
+          mkdir -p .phoenix/logs
+          echo "=== PHOENIXCI FAILURE CAPTURE ===" > .phoenix/logs/failure.log
+          echo "Failed Commit: ${{ github.sha }}" >> .phoenix/logs/failure.log
+          echo "Run ID: ${{ github.run_id }}" >> .phoenix/logs/failure.log
+          echo "Timestamp: $(date -u)" >> .phoenix/logs/failure.log
+          echo "Step Failures:" >> .phoenix/logs/failure.log
+          if [ "${{ steps.npm-install.outcome }}" == "failure" ]; then
+            echo "Failed Step: npm-install" >> .phoenix/logs/failure.log
+          elif [ "${{ steps.npm-test.outcome }}" == "failure" ]; then
+            echo "Failed Step: npm-test" >> .phoenix/logs/failure.log
+          elif [ "${{ steps.docker-build.outcome }}" == "failure" ]; then
+            echo "Failed Step: docker-build" >> .phoenix/logs/failure.log
+          fi
+          echo "==================================" >> .phoenix/logs/failure.log
+
+      - name: "Upload Failure Logs Artifact"
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-logs
+          path: .phoenix/logs/failure.log
+          retention-days: 7

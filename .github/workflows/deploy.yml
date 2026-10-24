@@ -1,0 +1,48 @@
+name: "Production Deployment (EC2)"
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-to-ec2:
+    name: "Deploy Verified Release to Ubuntu EC2"
+    # Deployment is strictly optional and disabled until explicitly configured
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout merged commit"
+        uses: actions/checkout@v4
+
+      - name: "Validate deployment credentials"
+        run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "ERROR: EC2 deployment is enabled but EC2_HOST or EC2_SSH_KEY secrets are missing."
+            exit 1
+          fi
+
+      - name: "Configure SSH Key"
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: "Execute Remote Deployment on EC2"
+        run: |
+          scp -r deploy/ app/ docker-compose.yml ubuntu@${{ secrets.EC2_HOST }}:~/phoenixci/
+          ssh ubuntu@${{ secrets.EC2_HOST }} "bash ~/phoenixci/deploy/deploy.sh ${{ github.sha }}"
+
+      - name: "Run Remote Healthcheck"
+        run: |
+          ssh ubuntu@${{ secrets.EC2_HOST }} "bash ~/phoenixci/deploy/healthcheck.sh"
+
+      - name: "Automatic Rollback on Failure"
+        if: failure()
+        run: |
+          echo "[!] Health check or deployment failed. Triggering automatic rollback..."
+          ssh ubuntu@${{ secrets.EC2_HOST }} "bash ~/phoenixci/deploy/rollback.sh"

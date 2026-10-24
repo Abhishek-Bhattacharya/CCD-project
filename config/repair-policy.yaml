@@ -1,0 +1,66 @@
+version: "1.0"
+
+# Category-specific file permissions
+categories:
+  dependency_version:
+    description: "Repairs for broken or incompatible dependencies"
+    allowed_files:
+      - "app/package.json"
+      - "app/package-lock.json"
+    allowed_operations:
+      - "replace"
+    max_file_changes: 2
+    max_lines_changed: 50
+
+  dockerfile_error:
+    description: "Repairs for Dockerfile instructions and build errors"
+    allowed_files:
+      - "app/Dockerfile"
+    allowed_operations:
+      - "replace"
+    max_file_changes: 1
+    max_lines_changed: 30
+
+  unit_test_regression:
+    description: "Repairs for application source code regressions"
+    allowed_files:
+      - "app/src/priority.js"
+      - "app/src/app.js"
+      - "app/src/server.js"
+    allowed_operations:
+      - "replace"
+    max_file_changes: 2
+    max_lines_changed: 60
+    # Explicitly forbidden to modify tests under any circumstance
+    forbidden_files:
+      - "app/tests/**"
+      - "tests/**"
+
+# Global denial rules across all categories
+global_denials:
+  patterns:
+    - ".github/workflows/**"
+    - "config/**"
+    - "deploy/**"
+    - "scripts/**"
+    - ".env*"
+    - "**/*.pem"
+    - "**/*.key"
+    - "**/*.secret"
+    - "**/id_rsa*"
+    - "**/.git/**"
+    - "app/tests/**"
+    - "tests/**"
+  prohibit_symlinks: true
+  prohibit_binary_files: true
+  prohibit_file_creations: true
+  prohibit_file_deletions: true
+  max_total_patch_bytes: 16384 # 16KB max patch size
+
+# Retry and approval policies
+governance:
+  max_repair_attempts: 2
+  require_human_approval: true
+  auto_merge_enabled: false
+  pr_title_prefix: "[PhoenixCI Self-Healing]"
+  branch_prefix: "phoenix/repair-"

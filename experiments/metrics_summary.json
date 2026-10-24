@@ -1,0 +1,17 @@
+{
+  "total_trials": 20,
+  "successful_repairs": 20,
+  "repair_success_rate_pct": 100.0,
+  "classification_accuracy_pct": 100.0,
+  "patch_acceptance_rate_pct": 100.0,
+  "post_repair_ci_pass_rate_pct": 100.0,
+  "deployment_success_rate_pct": 100.0,
+  "phoenix_mttr_seconds": 1.205,
+  "baseline_mttr_seconds": 1470.0,
+  "mttr_reduction_percentage": 99.92,
+  "avg_repair_attempts": 1,
+  "avg_total_tokens": 570,
+  "total_cost_usd": 0.0,
+  "avg_cost_per_repair_usd": 0.0,
+  "experiment_mode": "mock"
+}
