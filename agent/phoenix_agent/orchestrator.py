@@ -65,7 +65,9 @@ class RecoveryOrchestrator:
         ci_logs: str,
         failed_step: str = "",
         git_diff: str = "",
-        workflow_run_id: Optional[str] = None
+        workflow_run_id: Optional[str] = None,
+        skip_local_verification: bool = False,
+        base_branch: str = "main"
     ) -> Dict[str, Any]:
         """
         Executes autonomous recovery pipeline for a CI failure.
@@ -313,12 +315,16 @@ class RecoveryOrchestrator:
             }
 
         # 9. Local Verification Check
-        local_ci_passed, local_ci_msg = self._run_local_verification(category)
+        if skip_local_verification:
+            local_ci_passed = False
+            local_ci_msg = "Local execution skipped; CI verification is requested on the repair branch."
+        else:
+            local_ci_passed, local_ci_msg = self._run_local_verification(category)
         self.audit_logger.log_event(
             event_type="ci_verification_local",
             incident_id=incident_id,
             commit_sha=commit_sha,
-            status="passed" if local_ci_passed else "failed",
+            status="skipped" if skip_local_verification else "passed" if local_ci_passed else "failed",
             details={"message": local_ci_msg},
             workflow_run_id=workflow_run_id
         )
@@ -335,13 +341,41 @@ class RecoveryOrchestrator:
             changes_summary=[f"{c.path}: {c.reason}" for c in proposal.changes],
             attempt_number=attempt_num,
             llm_metadata=llm_meta,
-            validation_status="Passed strict policy checks and verification"
+            validation_status=(
+                "Passed strict policy checks and local verification"
+                if local_ci_passed
+                else "Passed strict policy checks; CI verification is pending"
+            )
         )
 
-        # In local/mock or test repository, create branch & PR
+        if not self.github_client.mock_mode:
+            if not self.github_client.create_repair_branch(repair_branch, commit_sha):
+                return self._record_publish_failure(
+                    incident_id, attempt_num, commit_sha, workflow_run_id,
+                    "repair_branch_creation_failed",
+                    "Could not create a repair branch from the failed commit."
+                )
+
+            committed, commit_result = self.github_client.commit_changes(
+                f"[PhoenixCI] Repair {category} for {commit_sha[:7]}",
+                [change.path for change in proposal.changes]
+            )
+            if not committed:
+                return self._record_publish_failure(
+                    incident_id, attempt_num, commit_sha, workflow_run_id,
+                    "repair_commit_failed", commit_result
+                )
+
+            pushed, push_message = self.github_client.push_branch(repair_branch)
+            if not pushed:
+                return self._record_publish_failure(
+                    incident_id, attempt_num, commit_sha, workflow_run_id,
+                    "repair_push_failed", push_message
+                )
+
         pr_success, pr_number, pr_url = self.github_client.create_pull_request(
             branch_name=repair_branch,
-            base_branch="main",
+            base_branch=base_branch,
             title=pr_title,
             body=pr_body
         )
@@ -362,6 +396,43 @@ class RecoveryOrchestrator:
             elapsed_seconds=time.time() - start_time
         )
 
+        if not pr_success:
+            return self._record_publish_failure(
+                incident_id, attempt_num, commit_sha, workflow_run_id,
+                "pull_request_creation_failed", pr_url
+            )
+
+        if not self.github_client.mock_mode:
+            dispatched, dispatch_message = self.github_client.dispatch_workflow(
+                "ci.yml", repair_branch
+            )
+            self.audit_logger.log_event(
+                event_type="repair_ci_dispatch",
+                incident_id=incident_id,
+                commit_sha=commit_sha,
+                status="requested" if dispatched else "failed",
+                details={"branch": repair_branch, "message": dispatch_message},
+                workflow_run_id=workflow_run_id
+            )
+            if not dispatched:
+                self.retry_manager.record_attempt_result(
+                    incident_id=incident_id,
+                    attempt_number=attempt_num,
+                    repair_branch=repair_branch,
+                    pr_number=pr_number,
+                    patch_valid=True,
+                    ci_outcome="ci_dispatch_failed",
+                    notes=dispatch_message
+                )
+                return {
+                    "success": False,
+                    "incident_id": incident_id,
+                    "category": category,
+                    "status": "ci_dispatch_failed",
+                    "pr_url": pr_url,
+                    "message": dispatch_message
+                }
+
         # 11. Approval & Merge Evaluation
         merge_outcome = "pending_human_approval" if self.require_approval else (
             "auto_merged" if (self.auto_merge and local_ci_passed) else "pending_review"
@@ -373,7 +444,7 @@ class RecoveryOrchestrator:
             repair_branch=repair_branch,
             pr_number=pr_number,
             patch_valid=True,
-            ci_outcome="success" if local_ci_passed else "failed",
+            ci_outcome="success" if local_ci_passed else "pending" if skip_local_verification else "failed",
             merge_outcome=merge_outcome,
             notes="Repair generated and validated successfully."
         )
@@ -391,8 +462,46 @@ class RecoveryOrchestrator:
             "proposal": proposal.model_dump(),
             "llm_metadata": llm_meta,
             "local_ci_passed": local_ci_passed,
+            "ci_verification": (
+                "pending" if skip_local_verification
+                else "passed" if local_ci_passed
+                else "failed"
+            ),
             "merge_outcome": merge_outcome,
             "elapsed_seconds": round(elapsed, 4)
+        }
+
+    def _record_publish_failure(
+        self,
+        incident_id: str,
+        attempt_number: int,
+        commit_sha: str,
+        workflow_run_id: str,
+        status: str,
+        message: str
+    ) -> Dict[str, Any]:
+        self.audit_logger.log_event(
+            event_type="repair_publish",
+            incident_id=incident_id,
+            commit_sha=commit_sha,
+            status="failed",
+            details={"status": status, "message": message},
+            workflow_run_id=workflow_run_id
+        )
+        self.retry_manager.record_attempt_result(
+            incident_id=incident_id,
+            attempt_number=attempt_number,
+            repair_branch=None,
+            pr_number=None,
+            patch_valid=True,
+            ci_outcome=status,
+            notes=message
+        )
+        return {
+            "success": False,
+            "incident_id": incident_id,
+            "status": status,
+            "message": message
         }
 
     def _run_local_verification(self, category: str) -> Tuple[bool, str]:

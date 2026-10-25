@@ -44,6 +44,7 @@ def cmd_recover(args):
     repo_root = args.repo_root or str(Path(__file__).resolve().parent.parent)
     orchestrator = RecoveryOrchestrator(
         repo_root=repo_root,
+        policy_path=args.policy_path,
         llm_mode=args.mode,
         groq_model=args.model
     )
@@ -52,7 +53,9 @@ def cmd_recover(args):
         commit_sha=args.commit,
         ci_logs=log_text,
         failed_step=args.failed_step or "",
-        workflow_run_id=args.run_id
+        workflow_run_id=args.run_id,
+        skip_local_verification=args.skip_local_verification,
+        base_branch=args.base_branch
     )
 
     print(json.dumps(result, indent=2))
@@ -96,6 +99,13 @@ def main():
     p_recover.add_argument("--mode", default=None, choices=["live", "mock"], help="LLM mode override")
     p_recover.add_argument("--model", default=None, help="Groq model override")
     p_recover.add_argument("--repo-root", default=None, help="Root path of repository")
+    p_recover.add_argument("--policy-path", default=None, help="Trusted repair policy path")
+    p_recover.add_argument("--base-branch", default="main", help="Target branch for the repair pull request")
+    p_recover.add_argument(
+        "--skip-local-verification",
+        action="store_true",
+        help="Defer code execution to the repair branch CI workflow"
+    )
     p_recover.set_defaults(func=cmd_recover)
 
     # status
