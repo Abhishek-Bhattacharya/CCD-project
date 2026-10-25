@@ -41,14 +41,18 @@ class FailureClassifier:
     ]
 
     UNIT_TEST_PATTERNS = [
-        r"FAIL\s+.*tests/.*\.test\.js",
+        r"FAIL\s+.*\.(?:test|spec)\.[jt]sx?",
         r"●\s+calculateIncidentPriority",
         r"●\s+PhoenixCI Express Endpoints",
         r"expect\(received\)\.toBe\(expected\)",
         r"Tests:\s+\d+\s+failed",
+        r"Test Files\s+\d+\s+failed",
         r"Jest:.*failed",
         r"AssertionError",
         r"Received:\s+",
+        r"error TS\d+:",
+        r"Failed to compile",
+        r"error during build",
     ]
 
     @classmethod

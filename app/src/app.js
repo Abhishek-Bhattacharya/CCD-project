@@ -72,7 +72,8 @@ if (process.env.NODE_ENV === 'production') {
   // Dev fallback: keep a JSON root response so supertest still passes
   app.get('/', (req, res) => {
     res.status(200).json({
-      project: 'PhoenixCI / Foundly',
+      project: 'PhoenixCI',
+      app: 'Foundly',
       description: 'Groq-Powered Self-Healing CI/CD Pipeline — Campus Lost & Found',
       version: '1.0.0',
       status: 'operational'

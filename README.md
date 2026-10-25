@@ -217,12 +217,21 @@ root `.env` file.
 
 ### 2. Run the Test Suites
 ```bash
-# Run Node.js Jest tests (14 tests)
+# Run Node.js Jest tests (15 tests)
 cd app && npm test && cd ..
 
-# Run Python Pytest agent tests (38 tests)
+# Run frontend tests and TypeScript/Vite production build
+cd frontend && npm test && npm run build && cd ..
+
+# Run Python Pytest agent tests (42 tests)
 pytest tests/ -v
 ```
+
+PhoenixCI's recovery workflow consumes the original GitHub Actions failure logs
+and routes frontend Vitest/TypeScript failures to the bounded frontend source
+allowlist. Frontend test files and workflow files remain blocked from agent
+patches. For a manual recovery dispatch, provide the failed commit SHA and CI
+run ID so PhoenixCI can retrieve the same diagnostics.
 
 ### 3. Test Controlled Fault Injection
 ```bash

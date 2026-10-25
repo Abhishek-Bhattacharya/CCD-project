@@ -34,6 +34,30 @@ def test_classify_unsupported_failure(fixtures_dir):
     assert confidence <= 0.50
 
 
+def test_classify_frontend_test_failure():
+    log_content = """
+ FAIL  src/pages/Homepage.test.tsx
+ Test Files  1 failed | 1 passed (2)
+ Tests  1 failed | 3 passed (4)
+ """
+    category, confidence, evidence = FailureClassifier.classify(
+        log_content, "frontend-test"
+    )
+    assert category == "unit_test_regression"
+    assert confidence >= 0.70
+    assert evidence
+
+
+def test_classify_frontend_typescript_build_failure():
+    log_content = "src/App.tsx(42,8): error TS2322: Type 'string' is not assignable."
+    category, confidence, evidence = FailureClassifier.classify(
+        log_content, "frontend-build"
+    )
+    assert category == "unit_test_regression"
+    assert confidence >= 0.70
+    assert evidence
+
+
 def test_classify_empty_log():
     category, confidence, evidence = FailureClassifier.classify("", "")
     assert category == "unsupported"

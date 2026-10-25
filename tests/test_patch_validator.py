@@ -96,6 +96,49 @@ def test_reject_modifying_unit_tests(policy_path, repo_root):
     assert any("matches global denial rule" in v or "not in allowed files" in v for v in violations)
 
 
+def test_allow_frontend_source_repairs_but_reject_frontend_tests(policy_path, repo_root):
+    validator = PatchValidator(policy_path=policy_path, repo_root=repo_root)
+    source_proposal = RepairProposal(
+        category="unit_test_regression",
+        diagnosis="Fix frontend type regression",
+        root_cause_evidence=[],
+        confidence=0.9,
+        changes=[
+            PatchChange(
+                path="frontend/src/App.tsx",
+                operation="replace",
+                original="currentPage={route.page}",
+                replacement='currentPage="home"',
+                reason="Correct the route regression"
+            )
+        ],
+        validation_plan=[]
+    )
+    valid, violations = validator.validate_pre_apply(source_proposal)
+    assert valid is True
+    assert violations == []
+
+    test_proposal = RepairProposal(
+        category="unit_test_regression",
+        diagnosis="Attempt to weaken frontend tests",
+        root_cause_evidence=[],
+        confidence=0.9,
+        changes=[
+            PatchChange(
+                path="frontend/src/App.test.tsx",
+                operation="replace",
+                original="expect(true).toBe(false)",
+                replacement="expect(true).toBe(true)",
+                reason="Attempt to bypass the test"
+            )
+        ],
+        validation_plan=[]
+    )
+    valid, violations = validator.validate_pre_apply(test_proposal)
+    assert valid is False
+    assert any("global denial rule" in violation for violation in violations)
+
+
 def test_reject_ambiguous_replacement(policy_path, repo_root, tmp_path):
     # Create file with duplicate string
     sample_file = tmp_path / "app" / "src" / "priority.js"

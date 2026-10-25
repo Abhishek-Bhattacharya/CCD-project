@@ -6,6 +6,7 @@ describe('PhoenixCI Express Endpoints', () => {
     const res = await request(app).get('/');
     expect(res.statusCode).toBe(200);
     expect(res.body.project).toBe('PhoenixCI');
+    expect(res.body.app).toBe('Foundly');
     expect(res.body.status).toBe('operational');
     expect(res.body.version).toBe('1.0.0');
   });

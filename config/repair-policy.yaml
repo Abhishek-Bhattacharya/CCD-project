@@ -7,6 +7,8 @@ categories:
     allowed_files:
       - "app/package.json"
       - "app/package-lock.json"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
     allowed_operations:
       - "replace"
     max_file_changes: 2
@@ -27,6 +29,8 @@ categories:
       - "app/src/priority.js"
       - "app/src/app.js"
       - "app/src/server.js"
+      - "frontend/src/*.ts"
+      - "frontend/src/*.tsx"
     allowed_operations:
       - "replace"
     max_file_changes: 2
@@ -50,6 +54,11 @@ global_denials:
     - "**/id_rsa*"
     - "**/.git/**"
     - "app/tests/**"
+    - "frontend/src/test/**"
+    - "frontend/src/tests/**"
+    - "frontend/src/**/__tests__/**"
+    - "frontend/src/*.test.*"
+    - "frontend/src/*.spec.*"
     - "tests/**"
   prohibit_symlinks: true
   prohibit_binary_files: true

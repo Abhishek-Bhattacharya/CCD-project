@@ -9,6 +9,10 @@ from typing import Dict, List, Optional
 class ContextCollector:
     """Collects bounded context, redacts secrets, and sanitizes untrusted CI logs and files."""
 
+    FRONTEND_SOURCE_PATTERN = re.compile(
+        r"(?<![\w/])((?:frontend/)?src/(?:[\w.-]+/)*[\w.-]+\.(?:tsx?|css))(?=[:\s():]|$)"
+    )
+
     # Patterns for secret redaction
     SECRET_PATTERNS = [
         (r"gsk_[A-Za-z0-9_-]{20,}", "[REDACTED_GROQ_API_KEY]"),
@@ -121,6 +125,12 @@ class ContextCollector:
             lock_path = self.repo_root / "app" / "package-lock.json"
             context["lockfile_exists"] = lock_path.is_file()
 
+            frontend_pkg = self.read_repo_file("frontend/package.json")
+            if frontend_pkg:
+                context["files"]["frontend/package.json"] = frontend_pkg
+            frontend_lock = self.repo_root / "frontend" / "package-lock.json"
+            context["frontend_lockfile_exists"] = frontend_lock.is_file()
+
         elif category == "dockerfile_error":
             dockerfile = self.read_repo_file("app/Dockerfile")
             if dockerfile:
@@ -138,8 +148,34 @@ class ContextCollector:
             priority_impl = self.read_repo_file("app/src/priority.js")
             if priority_impl:
                 context["files"]["app/src/priority.js"] = priority_impl
+            api_impl = self.read_repo_file("app/src/app.js")
+            if api_impl:
+                context["files"]["app/src/app.js"] = api_impl
+            server_impl = self.read_repo_file("app/src/server.js")
+            if server_impl:
+                context["files"]["app/src/server.js"] = server_impl
             test_file = self.read_repo_file("app/tests/priority.test.js")
             if test_file:
                 context["files"]["app/tests/priority.test.js (READ ONLY REFERENCE)"] = test_file
+
+            frontend_paths = set()
+            for match in self.FRONTEND_SOURCE_PATTERN.finditer(raw_logs):
+                source_path = match.group(1).replace("\\", "/")
+                if source_path.startswith("src/"):
+                    source_path = f"frontend/{source_path}"
+                parts = source_path.split("/")
+                if (
+                    not source_path.startswith("frontend/src/")
+                    or any(part in {"test", "tests", "__tests__"} for part in parts)
+                    or ".test." in source_path
+                    or ".spec." in source_path
+                ):
+                    continue
+                frontend_paths.add(source_path)
+
+            for source_path in sorted(frontend_paths)[:5]:
+                source = self.read_repo_file(source_path)
+                if source:
+                    context["files"][source_path] = source
 
         return context

@@ -42,3 +42,16 @@ def test_collect_context_dependency(repo_root, fixtures_dir):
     assert ctx["category"] == "dependency_version"
     assert "app/package.json" in ctx["files"]
     assert ctx["lockfile_exists"] is True
+    assert "frontend/package.json" in ctx["files"]
+    assert ctx["frontend_lockfile_exists"] is True
+
+
+def test_collect_context_includes_frontend_failure_source(repo_root):
+    collector = ContextCollector(repo_root=repo_root)
+    ctx = collector.collect_context(
+        "unit_test_regression",
+        "FAIL src/App.test.tsx\nsrc/App.tsx(42,8): error TS2322: Type error",
+    )
+    assert "app/src/app.js" in ctx["files"]
+    assert "frontend/src/App.tsx" in ctx["files"]
+    assert "frontend/src/App.test.tsx" not in ctx["files"]
