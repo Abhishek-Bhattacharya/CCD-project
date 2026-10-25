@@ -27,10 +27,22 @@ def test_mock_mode_no_api_key_required():
 
 def test_mock_mode_dockerfile_error():
     client = LLMClient(mode="mock")
-    proposal, meta = client.generate_repair_proposal("dockerfile_error", {})
+    proposal, meta = client.generate_repair_proposal("dockerfile_error", {
+        "files": {"app/Dockerfile": "COPY src/ ./src/"}
+    })
     assert proposal.category == "dockerfile_error"
     assert proposal.changes[0].path == "app/Dockerfile"
-    assert "COPPY" in proposal.changes[0].original
+    assert proposal.changes[0].original == "COPY src/ ./src/"
+    assert proposal.changes[0].replacement == "COPY app/src/ ./src/"
+
+
+def test_mock_mode_repairs_injected_docker_instruction():
+    client = LLMClient(mode="mock")
+    proposal, _ = client.generate_repair_proposal("dockerfile_error", {
+        "files": {"app/Dockerfile": "COPPY app/src/ ./src/"}
+    })
+    assert proposal.changes[0].original == "COPPY app/src/ ./src/"
+    assert proposal.changes[0].replacement == "COPY app/src/ ./src/"
 
 
 def test_mock_mode_unit_test_regression():

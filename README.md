@@ -223,7 +223,7 @@ cd app && npm test && cd ..
 # Run frontend tests and TypeScript/Vite production build
 cd frontend && npm test && npm run build && cd ..
 
-# Run Python Pytest agent tests (42 tests)
+# Run Python Pytest agent tests (43 tests)
 pytest tests/ -v
 ```
 

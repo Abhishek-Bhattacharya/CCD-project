@@ -10,9 +10,9 @@ RUN npm run build --prefix frontend
 FROM node:24-alpine AS production
 
 WORKDIR /app
-COPY package*.json ./
+COPY app/package*.json ./
 RUN npm ci --omit=dev
-COPY src/ ./src/
+COPY app/src/ ./src/
 COPY --from=frontend-build /workspace/app/dist ./dist
 
 ENV NODE_ENV=production

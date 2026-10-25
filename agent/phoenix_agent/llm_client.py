@@ -314,21 +314,39 @@ class LLMClient:
                 validation_plan=["npm install --package-lock-only", "npm test"]
             )
         elif category == "dockerfile_error":
+            dockerfile = context.get("files", {}).get("app/Dockerfile", "")
+            if "COPPY src/ ./src/" in dockerfile:
+                original = "COPPY src/ ./src/"
+                replacement = "COPY app/src/ ./src/"
+                diagnosis = "The Dockerfile uses an invalid instruction and a source path that is relative to the app directory instead of the repository build context."
+            elif "COPY src/ ./src/" in dockerfile:
+                original = "COPY src/ ./src/"
+                replacement = "COPY app/src/ ./src/"
+                diagnosis = "The Docker build context is the repository root, so the service source must be copied from app/src."
+            elif "COPPY app/src/ ./src/" in dockerfile:
+                original = "COPPY app/src/ ./src/"
+                replacement = "COPY app/src/ ./src/"
+                diagnosis = "A typo in the Dockerfile instruction caused the container build failure."
+            else:
+                original = "COPPY app/src/ ./src/"
+                replacement = "COPY app/src/ ./src/"
+                diagnosis = "A typo in the Dockerfile instruction caused the container build failure."
+
             proposal = RepairProposal(
                 category="dockerfile_error",
-                diagnosis="A typo in Dockerfile instruction caused container build failure.",
-                root_cause_evidence=["unknown instruction: COPPY", "failed to solve with frontend dockerfile"],
+                diagnosis=diagnosis,
+                root_cause_evidence=["Dockerfile COPY source paths are relative to the repository-root build context."],
                 confidence=0.95,
                 changes=[
                     {
                         "path": "app/Dockerfile",
                         "operation": "replace",
-                        "original": "COPPY src/ ./src/",
-                        "replacement": "COPY src/ ./src/",
-                        "reason": "Correct 'COPPY' typo to valid Dockerfile instruction 'COPY'"
+                        "original": original,
+                        "replacement": replacement,
+                        "reason": "Use a valid Dockerfile instruction and a source path relative to the configured build context."
                     }
                 ],
-                validation_plan=["docker build -t phoenixci-service:test app/"]
+                validation_plan=["docker build -t phoenixci-service:test -f app/Dockerfile ."]
             )
         elif category == "unit_test_regression":
             proposal = RepairProposal(

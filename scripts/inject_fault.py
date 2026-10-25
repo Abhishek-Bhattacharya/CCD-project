@@ -92,10 +92,10 @@ class FaultInjector:
         elif scenario == "dockerfile_error":
             df_path = self.repo_root / "app" / "Dockerfile"
             content = df_path.read_text(encoding="utf-8")
-            if "COPY src/ ./src/" not in content:
+            if "COPY app/src/ ./src/" not in content:
                 print("ERROR: Target Dockerfile instruction not found", file=sys.stderr)
                 sys.exit(1)
-            new_content = content.replace("COPY src/ ./src/", "COPPY src/ ./src/")
+            new_content = content.replace("COPY app/src/ ./src/", "COPPY app/src/ ./src/")
             injected_files[str(df_path)] = content
             df_path.write_text(new_content, encoding="utf-8")
             print("  -> Corrupted Dockerfile with invalid instruction 'COPPY'")
