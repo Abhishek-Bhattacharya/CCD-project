@@ -28,7 +28,7 @@ function calculateIncidentPriority(severity, affectedUsers, isProduction = false
   }
 
   if (normalizedSeverity === 'critical' || affectedUsers >= 1000 || (isProduction && affectedUsers >= 100)) {
-    return 'P1';
+    return 'P4'; // INJECTED_REGRESSION
   }
 
   if (normalizedSeverity === 'high' || affectedUsers >= 500) {
